@@ -1,44 +1,44 @@
-"""
-This module takes care of starting the API Server, Loading the DB and Adding the endpoints
-"""
-import os
-from flask import Flask, request, jsonify, url_for
-from flask_cors import CORS
-from utils import APIException, generate_sitemap
-from datastructures import FamilyStructure
-#from models import Person
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
-app.url_map.strict_slashes = False
-CORS(app)
 
-# create the jackson family object
-jackson_family = FamilyStructure("Jackson")
+# Estructura de datos: la familia inicial con 3 miembros.
+family_members = [
+    {"id": 1, "first_name": "John", "last_name": "Jackson", "age": 33, "lucky_numbers": [7, 8, 9]},
+    {"id": 2, "first_name": "Jane", "last_name": "Jackson", "age": 35, "lucky_numbers": [4, 2, 5]},
+    {"id": 3, "first_name": "Jenna", "last_name": "Jackson", "age": 30, "lucky_numbers": [1, 2, 3]}
+]
 
-# Handle/serialize errors like a JSON object
-@app.errorhandler(APIException)
-def handle_invalid_usage(error):
-    return jsonify(error.to_dict()), error.status_code
-
-# generate sitemap with all your endpoints
-@app.route('/')
-def sitemap():
-    return generate_sitemap(app)
-
+# Ruta GET para obtener todos los miembros
 @app.route('/members', methods=['GET'])
-def handle_hello():
+def get_members():
+    return jsonify(family_members)
 
-    # this is how you can use the Family datastructure by calling its methods
-    members = jackson_family.get_all_members()
-    response_body = {
-        "hello": "world",
-        "family": members
-    }
+# Ruta GET para obtener un miembro por su ID
+@app.route('/member/<int:id>', methods=['GET'])
+def get_member(id):
+    # Buscar al miembro por ID
+    member = next((m for m in family_members if m['id'] == id), None)
+    
+    if member:
+        return jsonify(member)
+    else:
+        return jsonify({"error": "Member not found"}), 404
 
+# Ruta POST para agregar un nuevo miembro
+@app.route('/member', methods=['POST'])
+def add_member():
+    new_member = request.json 
+    family_members.append(new_member)  
+    return jsonify(new_member), 200
 
-    return jsonify(response_body), 200
+# Ruta DELETE para eliminar un miembro por su ID
+@app.route('/member/<int:id>', methods=['DELETE'])
+def delete_member(id):
+    global family_members
+    # Filtrar todos los miembros que no sean el que queremos eliminar
+    family_members = [m for m in family_members if m['id'] != id]
+    return jsonify({"done": True}), 200
 
-# this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
-    PORT = int(os.environ.get('PORT', 3000))
-    app.run(host='0.0.0.0', port=PORT, debug=True)
+    app.run(debug=True)
